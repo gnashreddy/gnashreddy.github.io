@@ -228,4 +228,56 @@ document.addEventListener('DOMContentLoaded', () => {
         // Start the dotted animation, update every 500ms (adjust for speed)
         setInterval(animateDottedDisplay, 500);
     }
+
+    // --- NEW: Spotlight hover interactions ---
+    const spotlightElements = document.querySelectorAll('[data-spotlight]');
+
+    spotlightElements.forEach((element) => {
+        element.addEventListener('pointermove', (event) => {
+            const bounds = element.getBoundingClientRect();
+            const x = ((event.clientX - bounds.left) / bounds.width) * 100;
+            const y = ((event.clientY - bounds.top) / bounds.height) * 100;
+            element.style.setProperty('--cursor-x', `${x}%`);
+            element.style.setProperty('--cursor-y', `${y}%`);
+        });
+
+        element.addEventListener('pointerenter', () => {
+            element.classList.add('is-hovered');
+        });
+
+        element.addEventListener('pointerleave', () => {
+            element.classList.remove('is-hovered');
+        });
+    });
+
+    // --- NEW: Scroll progress driven ambient background ---
+    const docElement = document.documentElement;
+
+    const updateScrollProgress = () => {
+        const maxScroll = document.body.scrollHeight - window.innerHeight;
+        const progress = maxScroll > 0 ? Math.min(1, window.scrollY / maxScroll) : 0;
+        docElement.style.setProperty('--scroll-progress', progress.toFixed(4));
+    };
+
+    updateScrollProgress();
+    window.addEventListener('scroll', updateScrollProgress, { passive: true });
+
+    // --- NEW: Section sweep animation trigger ---
+    const animatedSections = document.querySelectorAll('.section-animate');
+
+    if (animatedSections.length) {
+        const sectionObserver = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-active');
+                } else {
+                    entry.target.classList.remove('is-active');
+                }
+            });
+        }, {
+            threshold: 0.2
+        });
+
+        animatedSections.forEach((section) => sectionObserver.observe(section));
+    }
 });
