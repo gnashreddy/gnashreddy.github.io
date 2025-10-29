@@ -281,6 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
         animatedSections.forEach((section) => sectionObserver.observe(section));
     }
 
+
     // --- NEW: Social showcase reveal & hover playback ---
     const socialGrid = document.querySelector('[data-social-grid]');
 
@@ -388,4 +389,5 @@ document.addEventListener('DOMContentLoaded', () => {
             reduceMotionQuery.addListener(handleMotionPreferenceChange);
         }
     }
+
 });
