@@ -228,4 +228,164 @@ document.addEventListener('DOMContentLoaded', () => {
         // Start the dotted animation, update every 500ms (adjust for speed)
         setInterval(animateDottedDisplay, 500);
     }
+
+    // --- NEW: Spotlight hover interactions ---
+    const spotlightElements = document.querySelectorAll('[data-spotlight]');
+
+    spotlightElements.forEach((element) => {
+        element.addEventListener('pointermove', (event) => {
+            const bounds = element.getBoundingClientRect();
+            const x = ((event.clientX - bounds.left) / bounds.width) * 100;
+            const y = ((event.clientY - bounds.top) / bounds.height) * 100;
+            element.style.setProperty('--cursor-x', `${x}%`);
+            element.style.setProperty('--cursor-y', `${y}%`);
+        });
+
+        element.addEventListener('pointerenter', () => {
+            element.classList.add('is-hovered');
+        });
+
+        element.addEventListener('pointerleave', () => {
+            element.classList.remove('is-hovered');
+        });
+    });
+
+    // --- NEW: Scroll progress driven ambient background ---
+    const docElement = document.documentElement;
+
+    const updateScrollProgress = () => {
+        const maxScroll = document.body.scrollHeight - window.innerHeight;
+        const progress = maxScroll > 0 ? Math.min(1, window.scrollY / maxScroll) : 0;
+        docElement.style.setProperty('--scroll-progress', progress.toFixed(4));
+    };
+
+    updateScrollProgress();
+    window.addEventListener('scroll', updateScrollProgress, { passive: true });
+
+    // --- NEW: Section sweep animation trigger ---
+    const animatedSections = document.querySelectorAll('.section-animate');
+
+    if (animatedSections.length) {
+        const sectionObserver = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-active');
+                } else {
+                    entry.target.classList.remove('is-active');
+                }
+            });
+        }, {
+            threshold: 0.2
+        });
+
+        animatedSections.forEach((section) => sectionObserver.observe(section));
+    }
+
+    // --- NEW: Social showcase reveal & hover playback ---
+    const socialGrid = document.querySelector('[data-social-grid]');
+
+    if (socialGrid) {
+        const socialCards = Array.from(socialGrid.querySelectorAll('[data-social-card]'));
+        const reduceMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+        const toggleVideoControls = (shouldShowControls) => {
+            socialCards.forEach((card) => {
+                const video = card.querySelector('.social-preview-video');
+                if (video) {
+                    video.controls = shouldShowControls;
+                }
+            });
+        };
+
+        toggleVideoControls(reduceMotionQuery.matches);
+
+        if (socialCards.length) {
+            const gridObserver = new IntersectionObserver((entries, observer) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        socialCards.forEach((card, index) => {
+                            card.style.setProperty('--card-index', index);
+                            card.classList.add('is-revealed');
+                        });
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.35 });
+
+            gridObserver.observe(socialGrid);
+        }
+
+        const resetCardVideo = (card) => {
+            const video = card.querySelector('.social-preview-video');
+            if (!video) return;
+            video.pause();
+            video.currentTime = 0;
+            card.classList.remove('is-playing');
+        };
+
+        let playbackBound = false;
+
+        const bindPlayback = () => {
+            if (playbackBound || reduceMotionQuery.matches) {
+                return;
+            }
+
+            socialCards.forEach((card) => {
+                const video = card.querySelector('.social-preview-video');
+                if (!video) return;
+
+                video.controls = false;
+
+                const playVideo = () => {
+                    if (reduceMotionQuery.matches) {
+                        return;
+                    }
+                    const playPromise = video.play();
+                    if (playPromise !== undefined) {
+                        playPromise.catch(() => {});
+                    }
+                    card.classList.add('is-playing');
+                };
+
+                const stopVideo = () => {
+                    resetCardVideo(card);
+                };
+
+                card.addEventListener('pointerenter', playVideo);
+                card.addEventListener('pointerleave', stopVideo);
+                card.addEventListener('pointercancel', stopVideo);
+                card.addEventListener('focusin', playVideo);
+                card.addEventListener('focusout', stopVideo);
+
+                video.addEventListener('play', () => {
+                    card.classList.add('is-playing');
+                });
+                video.addEventListener('pause', () => {
+                    card.classList.remove('is-playing');
+                });
+            });
+
+            playbackBound = true;
+        };
+
+        if (!reduceMotionQuery.matches) {
+            bindPlayback();
+        }
+
+        const handleMotionPreferenceChange = (event) => {
+            if (event.matches) {
+                socialCards.forEach((card) => resetCardVideo(card));
+                toggleVideoControls(true);
+            } else {
+                toggleVideoControls(false);
+                bindPlayback();
+            }
+        };
+
+        if (typeof reduceMotionQuery.addEventListener === 'function') {
+            reduceMotionQuery.addEventListener('change', handleMotionPreferenceChange);
+        } else if (typeof reduceMotionQuery.addListener === 'function') {
+            reduceMotionQuery.addListener(handleMotionPreferenceChange);
+        }
+    }
 });
