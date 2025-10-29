@@ -280,4 +280,114 @@ document.addEventListener('DOMContentLoaded', () => {
 
         animatedSections.forEach((section) => sectionObserver.observe(section));
     }
+
+
+    // --- NEW: Social showcase reveal & hover playback ---
+    const socialGrid = document.querySelector('[data-social-grid]');
+
+    if (socialGrid) {
+        const socialCards = Array.from(socialGrid.querySelectorAll('[data-social-card]'));
+        const reduceMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+        const toggleVideoControls = (shouldShowControls) => {
+            socialCards.forEach((card) => {
+                const video = card.querySelector('.social-preview-video');
+                if (video) {
+                    video.controls = shouldShowControls;
+                }
+            });
+        };
+
+        toggleVideoControls(reduceMotionQuery.matches);
+
+        if (socialCards.length) {
+            const gridObserver = new IntersectionObserver((entries, observer) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        socialCards.forEach((card, index) => {
+                            card.style.setProperty('--card-index', index);
+                            card.classList.add('is-revealed');
+                        });
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.35 });
+
+            gridObserver.observe(socialGrid);
+        }
+
+        const resetCardVideo = (card) => {
+            const video = card.querySelector('.social-preview-video');
+            if (!video) return;
+            video.pause();
+            video.currentTime = 0;
+            card.classList.remove('is-playing');
+        };
+
+        let playbackBound = false;
+
+        const bindPlayback = () => {
+            if (playbackBound || reduceMotionQuery.matches) {
+                return;
+            }
+
+            socialCards.forEach((card) => {
+                const video = card.querySelector('.social-preview-video');
+                if (!video) return;
+
+                video.controls = false;
+
+                const playVideo = () => {
+                    if (reduceMotionQuery.matches) {
+                        return;
+                    }
+                    const playPromise = video.play();
+                    if (playPromise !== undefined) {
+                        playPromise.catch(() => {});
+                    }
+                    card.classList.add('is-playing');
+                };
+
+                const stopVideo = () => {
+                    resetCardVideo(card);
+                };
+
+                card.addEventListener('pointerenter', playVideo);
+                card.addEventListener('pointerleave', stopVideo);
+                card.addEventListener('pointercancel', stopVideo);
+                card.addEventListener('focusin', playVideo);
+                card.addEventListener('focusout', stopVideo);
+
+                video.addEventListener('play', () => {
+                    card.classList.add('is-playing');
+                });
+                video.addEventListener('pause', () => {
+                    card.classList.remove('is-playing');
+                });
+            });
+
+            playbackBound = true;
+        };
+
+        if (!reduceMotionQuery.matches) {
+            bindPlayback();
+        }
+
+        const handleMotionPreferenceChange = (event) => {
+            if (event.matches) {
+                socialCards.forEach((card) => resetCardVideo(card));
+                toggleVideoControls(true);
+            } else {
+                toggleVideoControls(false);
+                bindPlayback();
+            }
+        };
+
+        if (typeof reduceMotionQuery.addEventListener === 'function') {
+            reduceMotionQuery.addEventListener('change', handleMotionPreferenceChange);
+        } else if (typeof reduceMotionQuery.addListener === 'function') {
+            reduceMotionQuery.addListener(handleMotionPreferenceChange);
+        }
+    }
+
 });
